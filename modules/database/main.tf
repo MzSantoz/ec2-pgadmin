@@ -1,9 +1,3 @@
-data "aws_caller_identity" "current" {}
-
-locals {
-  current_identity = data.aws_caller_identity.current.arn
-}
-
 #security group for the database
 module "security_group" {
   source  = "terraform-aws-modules/security-group/aws"
@@ -11,7 +5,7 @@ module "security_group" {
 
   name        = var.db_sg_name
   description = "Security group for Postgres RDS instance."
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = var.vpc_id
 
   # ingress
   ingress_with_cidr_blocks = [
@@ -19,8 +13,15 @@ module "security_group" {
       from_port   = 5432
       to_port     = 5432
       protocol    = "tcp"
-      description = "PostgreSQL access from within VPC"
-      cidr_blocks = module.vpc.private_subnets_cidr_blocks[0]
+      description = "PostgreSQL access from within Private Subnet 1"
+      cidr_blocks = var.private_subnets_cidr_blocks[0]
+    },
+    {
+      from_port   = 5432
+      to_port     = 5432
+      protocol    = "tcp"
+      description = "PostgreSQL access from within Private Subnet 2"
+      cidr_blocks = var.private_subnets_cidr_blocks[1]
     },
   ]
 
@@ -38,7 +39,7 @@ module "db" {
   engine_version       = "14.1"
   family               = "postgres14" # DB parameter group
   major_engine_version = "14"         # DB option group
-  instance_class       = "db.t4g.large"
+  instance_class       = var.db_instance_type
 
   allocated_storage     = 20
   max_allocated_storage = 100
@@ -48,7 +49,7 @@ module "db" {
   port     = 5432
 
   multi_az               = true
-  db_subnet_group_name   = module.vpc.database_subnet_group
+  db_subnet_group_name   = var.database_subnet_group
   vpc_security_group_ids = [module.security_group.security_group_id]
 
   maintenance_window              = "Sun:00:00-Sun:03:00"
@@ -88,46 +89,4 @@ module "db" {
   db_parameter_group_tags = {
     "Sensitive" = "low"
   }
-}
-module "kms" {
-  source      = "terraform-aws-modules/kms/aws"
-  version     = "~> 1.0"
-  description = "KMS key for cross region automated backups replication"
-
-  # Aliases
-  aliases                 = [var.db_name]
-  aliases_use_name_prefix = true
-
-  key_owners = [local.current_identity]
-
-  tags = {
-    Name = "postgres-kms-key"
-  }
-
-  providers = {
-    aws = aws.backup_region
-  }
-}
-
-module "db_automated_backups_replication" {
-  source                 = "terraform-aws-modules/rds/aws//modules/db_instance_automated_backups_replication"
-  version                = "5.0.0"
-  source_db_instance_arn = module.db.db_instance_arn
-  kms_key_arn            = module.kms.key_arn
-
-  providers = {
-    aws = aws.backup_region
-  }
-}
-
-output "rds_endpoint" {
-  value = module.db.db_instance_endpoint
-}
-
-output "rds_port" {
-  value = module.db.db_instance_port
-}
-
-output "rds_password" {
-  value = module.db.db_instance_password
 }
