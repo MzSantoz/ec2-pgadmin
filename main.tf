@@ -23,8 +23,18 @@ module "rds_database" {
 module "pgadmin" {
   source = "./modules/ec2-pgadmin"
 
-  vpc_id                 = module.general_infrastructure.vpc_id
-  private_subnets        = module.general_infrastructure.private_subnets
-  pgadmin_admin_email    = var.admin_email
-  pgadmin_admin_password = var.admin_password
+  instance_key = var.instance_key
+  instance_type = var.instance_type
+  
+  vpc_id                      = module.general_infrastructure.vpc_id
+  private_subnets             = module.general_infrastructure.private_subnets
+  public_subnets              = module.general_infrastructure.public_subnets
+  private_subnets_cidr_blocks = module.general_infrastructure.private_subnets_cidr_blocks
+  public_subnets_cidr_blocks  = module.general_infrastructure.public_subnets_cidr_blocks
+  pgadmin_admin_email         = var.admin_email
+  pgadmin_admin_password      = var.admin_password
+
+  depends_on = [
+    module.general_infrastructure
+  ]
 }

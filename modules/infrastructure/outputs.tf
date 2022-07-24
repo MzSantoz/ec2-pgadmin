@@ -27,3 +27,8 @@ output "private_subnets_cidr_blocks" {
   description = "The list of CIDR blocks from private subnets"
   value       = module.vpc.private_subnets_cidr_blocks
 }
+
+output "public_subnets_cidr_blocks" {
+  description = "The list of CIDR blocks from public subnets"
+  value       = module.vpc.public_subnets_cidr_blocks
+}
