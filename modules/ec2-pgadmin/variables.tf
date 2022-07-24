@@ -37,11 +37,22 @@ variable "pgadmin_admin_password" {
 # ================ EC2 Variables ================
 
 variable "instance_type" {
-  type = string
+  type        = string
   description = "The type for the instance"
 }
 
 variable "instance_key" {
-  type = string
+  type        = string
   description = "The key pair to be used in the instances - Generate one SSH key to use and put the .pub code here"
+}
+
+# ================ EC2 Variables ================
+
+variable "rds_user" {
+  type        = string
+  description = "The user for fill pgadmin pre-config file"
+}
+variable "rds_endpoint" {
+  type        = string
+  description = "The endpoint to connect into db"
 }

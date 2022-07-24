@@ -35,11 +35,13 @@ module "db" {
 
   identifier = var.db_name
 
-  engine               = "postgres"
-  engine_version       = "14.1"
-  family               = "postgres14" # DB parameter group
-  major_engine_version = "14"         # DB option group
-  instance_class       = var.db_instance_type
+  engine                 = "postgres"
+  engine_version         = "14.1"
+  family                 = "postgres14" # DB parameter group
+  major_engine_version   = "14"         # DB option group
+  instance_class         = var.db_instance_type
+  create_random_password = false
+  password               = var.db_password
 
   allocated_storage     = 20
   max_allocated_storage = 100

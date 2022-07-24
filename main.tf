@@ -6,8 +6,10 @@ module "general_infrastructure" {
 module "rds_database" {
   source = "./modules/database"
 
-  db_name                     = var.rds_db_name
-  db_user                     = var.rds_db_user
+  db_name     = var.rds_db_name
+  db_user     = var.rds_db_user
+  db_password = var.rds_db_password
+
   vpc_id                      = module.general_infrastructure.vpc_id
   private_subnets             = module.general_infrastructure.private_subnets
   public_subnets              = module.general_infrastructure.public_subnets
@@ -23,9 +25,11 @@ module "rds_database" {
 module "pgadmin" {
   source = "./modules/ec2-pgadmin"
 
-  instance_key = var.instance_key
+  instance_key  = var.instance_key
   instance_type = var.instance_type
-  
+  rds_user = module.rds_database.rds_user
+  rds_endpoint = module.rds_database.rds_endpoint
+
   vpc_id                      = module.general_infrastructure.vpc_id
   private_subnets             = module.general_infrastructure.private_subnets
   public_subnets              = module.general_infrastructure.public_subnets

@@ -39,7 +39,7 @@ variable "db_name" {
 variable "db_instance_type" {
   type        = string
   default     = "db.t3.small"
-  description = "The custom database name"
+  description = "The db instance type"
 }
 
 # NOTE: Do NOT use 'user' as the value for 'username' as it throws:
@@ -48,6 +48,11 @@ variable "db_instance_type" {
 variable "db_user" {
   type        = string
   description = "The custom username for the Database"
+}
+
+variable "db_password" {
+  type        = string
+  description = "The custom password for the Database"
 }
 
 variable "db_sg_name" {

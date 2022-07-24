@@ -33,16 +33,16 @@ resource "aws_security_group" "ec2_sg" {
   vpc_id      = var.vpc_id
   ingress {
     description = "Instance traffic from private subnet"
-    from_port   = 80
-    to_port     = 80
+    from_port   = 5050
+    to_port     = 5050
     protocol    = "tcp"
     cidr_blocks = [var.public_subnets_cidr_blocks[0]]
   }
 
   ingress {
     description = "Instance traffic from private subnet"
-    from_port   = 80
-    to_port     = 80
+    from_port   = 5050
+    to_port     = 5050
     protocol    = "tcp"
     cidr_blocks = [var.public_subnets_cidr_blocks[1]]
   }
@@ -75,7 +75,7 @@ data "aws_ami" "this" {
 resource "aws_iam_role" "this" {
   name = "ec2-iam-role-sendcloud"
 
-  assume_role_policy = <<EOF
+  assume_role_policy  = <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -83,8 +83,8 @@ resource "aws_iam_role" "this" {
       "Action": "sts:AssumeRole",
       "Principal": {"Service": "ec2.amazonaws.com"},
       "Effect": "Allow",
-      "Sid": "First"
-    },
+      "Sid": ""
+    }
   ]
 }
 EOF
@@ -95,13 +95,18 @@ EOF
   }
 }
 
+resource "aws_iam_instance_profile" "this" {
+  name = "sendcloud-instance-profile"
+  role = aws_iam_role.this.name
+}
+
 resource "aws_key_pair" "this" {
   key_name   = "pgadmin-key"
   public_key = var.instance_key
 }
 module "efs" {
-  source = "cloudposse/efs/aws"
-  version     = "0.32.7"
+  source  = "cloudposse/efs/aws"
+  version = "0.32.7"
 
   namespace = "sendcloud"
   stage     = "development"
@@ -121,7 +126,7 @@ module "ec2_instance" {
   }
 
   name      = "pgadmin-server-${each.key}"
-  user_data_base64 = <<-EOT
+  user_data = <<-EOT
     #!/bin/bash
     sudo mkdir -p /mnt/efs
     sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${module.efs.dns_name}:/ /mnt/efs
@@ -133,8 +138,10 @@ module "ec2_instance" {
     sudo curl -L https://github.com/docker/compose/releases/download/1.25.4/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
     sudo chmod +x /usr/local/bin/docker-compose
     sudo mkdir /mnt/efs/pgadmin
+    sudo echo "{"Servers": {"1": {"Name": "SendCloud Postgres Server","Group": "Server Group 1","Port": 5432,"Username": "${var.rds_user}","Host": "${var.rds_endpoint}","SSLMode": "prefer","MaintenanceDB": "postgres"}}}" > /tmp/servers.json
+    sudo chown -R 5050:5050 /mnt/efs/pgadmin/
     docker pull dpage/pgadmin4
-    docker run -p 80:80 -v /mnt/efs/pgadmin:/var/lib/pgadmin -e 'PGADMIN_DEFAULT_EMAIL=${var.pgadmin_admin_email}' -e 'PGADMIN_DEFAULT_PASSWORD=${var.pgadmin_admin_password}' -d dpage/pgadmin4
+    docker run --name pgadmin -p 5050:80 -v /mnt/efs/pgadmin:/var/lib/pgadmin -v /tmp/servers.json:/pgadmin4/servers.json -e 'PGADMIN_DEFAULT_EMAIL=${var.pgadmin_admin_email}' -e 'PGADMIN_DEFAULT_PASSWORD=${var.pgadmin_admin_password}' -d dpage/pgadmin4
   EOT
 
   ami                    = data.aws_ami.this.id
@@ -143,7 +150,7 @@ module "ec2_instance" {
   monitoring             = true
   vpc_security_group_ids = [aws_security_group.ec2_sg.id, module.efs.security_group_id]
   subnet_id              = each.value
-  iam_instance_profile  = aws_iam_role.this.name
+  iam_instance_profile   = aws_iam_instance_profile.this.id
 
   tags = {
     Terraform   = "true"
@@ -159,7 +166,7 @@ module "alb" {
 
   for_each = {
     instance = module.ec2_instance
-    }
+  }
 
   name = "sendcloud-pgadmin4-loadbalancer"
 
@@ -168,7 +175,7 @@ module "alb" {
   vpc_id          = var.vpc_id
   subnets         = var.public_subnets
   security_groups = [aws_security_group.alb_sg.id]
-  
+
   target_groups = [
     {
       name_prefix      = "pref-"
@@ -178,13 +185,18 @@ module "alb" {
       targets = [
         {
           target_id = each.value["One"].id
-          port = 80
+          port      = 5050
         },
         {
           target_id = each.value["Two"].id
-          port = 80
+          port      = 5050
         },
       ]
+      health_check = {
+        enable  = true
+        matcher = "302"
+        path    = "/"
+      }
     }
 
   ]

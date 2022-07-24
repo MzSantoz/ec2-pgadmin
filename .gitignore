@@ -36,3 +36,5 @@ terraform.rc
 # Application generated keys
 key
 key.pub
+
+.DS_Store
