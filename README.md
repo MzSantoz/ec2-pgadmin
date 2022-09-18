@@ -1,4 +1,4 @@
-# ecs-pgadmin - Sencloud Assessment
+# ec2-pgadmin - AWS PgAdmin fast example.
 
 Developer: Moisés Santos
 
